@@ -14,7 +14,7 @@ def increase_throttle(percent):
 
 def decrease_throttle(percent):
     keyboard.press('s')
-    threading.Event().wait(0.03362 * percent)
+    threading.Event().wait(0.033624 * percent)
     keyboard.release('s')
 
 
