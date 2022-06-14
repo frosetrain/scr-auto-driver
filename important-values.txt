@@ -1,0 +1,9 @@
+start 00:00:09.983
+throttle increase stop 00:00:13.300
+acceleration stop 00:00:40.833
+
+throttle 0-100: 3.317 seconds
+throttle 0.03317% / second
+acceleration 0-100: 30.850 seconds
+acceleration 0.3085 mph / second
+
