@@ -1,42 +1,41 @@
 import threading
 import time
 
-from pyscreenshot import grab
 import pynput.keyboard
 import pynput.mouse
 import pytesseract
+from PIL import Image
+from pyscreenshot import grab
 
 keyboard = pynput.keyboard.Controller()
 mouse = pynput.mouse.Controller()
 
+THROTTLE_CHANGE_SPEED = 0.033624
+SPEED_LIMIT_BBOX = (1862, 994, 1893, 1009)
 
-<<<<<<< HEAD
+
 def change_throttle(percent):
     if percent > 0:
-        keyboard.press('w')
-        threading.Event().wait(0.033624 * percent)
-        keyboard.release('w')
+        keyboard.press("w")
+        threading.Event().wait(THROTTLE_CHANGE_SPEED * percent)
+        keyboard.release("w")
     elif percent < 0:
-        keyboard.press('s')
-        threading.Event().wait(0.03362 * abs(percent))
-        keyboard.release('s')
-=======
-def increase_throttle(percent):
-    keyboard.press('w')
-    threading.Event().wait(0.033624 * percent)
-    keyboard.release('w')
+        keyboard.press("s")
+        threading.Event().wait(THROTTLE_CHANGE_SPEED * abs(percent))
+        keyboard.release("s")
 
 
-def decrease_throttle(percent):
-    keyboard.press('s')
-    threading.Event().wait(0.033624 * percent)
-    keyboard.release('s')
->>>>>>> 126e4bc176ede68ec7e3d5d55ae45811f005ba5c
+def get_speed_limit(bbox):
+    pic = grab(bbox=SPEED_LIMIT_BBOX)
+    pic.save("snip.tif")
+    pic = Image.open("snip.tif")
+    pic = pic.resize((62, 30))
+    speed_limit = pytesseract.image_to_string("snip.tif", config="--psm 7 digits")
+    speed_limit = speed_limit.strip(" \n")
+    return speed_limit
 
 
 if __name__ == "__main__":
     while True:
-        pic = grab(bbox=(1335, 992, 1378, 1011))
-        pic.save("snip.jpg")
-        print(pytesseract.image_to_string("snip.jpg", lang="osd"))
+        print(get_speed_limit(SPEED_LIMIT_BBOX))
         time.sleep(2)
