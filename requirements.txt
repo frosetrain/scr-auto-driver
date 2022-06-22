@@ -1,1 +1,4 @@
+Pillow==9.1.1
 pynput==1.7.6
+pyscreenshot==3.0
+pytesseract==0.3.9
