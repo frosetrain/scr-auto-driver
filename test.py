@@ -14,7 +14,7 @@ keyboard = pynput.keyboard.Controller()
 THROTTLE_CHANGE_SPEED = 0.033624
 SPEED_LIMIT_BBOX = (1561, 1353, 1594, 1370)
 SIGNAL_LIGHT_BBOX = (2090, 1302, 2118, 1425)
-SIGNAL_LIGHT_POINTS = [[14, 14], [14, 46], [14, 78], [14, 110]]
+SIGNAL_LIGHT_POINTS = ((14, 14), (14, 46), (14, 78), [14, 110])
 
 
 def get_speed_limit() -> str:
