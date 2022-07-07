@@ -9,9 +9,3 @@ desktop throttle bbox: (1862, 994, 1893, 1009)
 laptop throttle bbox: (1561, 1353, 1594, 1370)
 laptop signal bbox: (2090, 1302, 2118, 1425)
 laptop signal points: [[14, 14], [14, 46], [14, 78], [14, 110]]
-
-# Signal colours
-Green: rgb(0, 255, 0)
-Yellow: rgb(254, 190, 6)
-Red: rgb(247, 2, 1)
-White: rgb(251, 251, 251)
