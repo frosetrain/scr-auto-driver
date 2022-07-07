@@ -51,6 +51,8 @@ def get_signal_limit() -> str:
 
     return aspect_colours
 
+    # TODO: Calculate ideal speed based on aspect_colours
+
 
 def change_throttle(percent):
     if percent > 0:
