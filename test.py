@@ -12,27 +12,40 @@ from PIL import ImageGrab
 keyboard = pynput.keyboard.Controller()
 # mouse = pynput.mouse.Controller()
 
+logging.getLogger("PIL.TiffImagePlugin").setLevel(logging.INFO)
+logging.basicConfig(level="DEBUG")
+
+
 TOP_SPEED = 100
 THROTTLE_CHANGE_SPEED = 0.033624
-SPEED_LIMIT_BBOX = (1561, 1356, 1594, 1373)
+SPEED_LIMIT_BBOX = (1561, 1352, 1594, 1373)
 SIGNAL_LIGHT_BBOX = (2090, 1302, 2118, 1425)
 SIGNAL_LIGHT_POINTS = ((14, 14), (14, 46), (14, 78), [14, 110])
+AWS_BBOX = (2025, 1320, 2035, 1330)
+AWS_POINT = (2030, 1325)
 
 
 def get_speed_limit() -> int:
     pic = ImageGrab.grab(bbox=SPEED_LIMIT_BBOX)
+    pic = pic.resize((99, 63))
     pic.save("speed_limit_snip.tif")
     speed_limit = pytesseract.image_to_string(
-        "speed_limit_snip.tif", config="--psm 7 digits"
+        "speed_limit_snip.tif", config="--psm 7 digits get.images"
     )
     speed_limit = speed_limit.strip()
     logging.debug(f"Tesseract returned {speed_limit}")
     try:
         speed_limit = int(speed_limit)
+        if speed_limit <= 10:
+            speed_limit = 75
         logging.debug(f"Succesfully read speed limit: {speed_limit}")
         last_successful_speed_limit = speed_limit
     except ValueError:
-        speed_limit = last_successful_speed_limit
+        try:
+            speed_limit = last_successful_speed_limit
+            logging.debug(f"Tesseract error, setting speed to {speed_limit}")
+        except UnboundLocalError:
+            return
     return speed_limit
 
 
@@ -72,6 +85,13 @@ def get_signal_limit() -> int:
     return signal_limit
 
 
+def handle_aws() -> None:
+    pic = ImageGrab.grab(bbox=AWS_BBOX)
+    pixels = pic.load()
+    if pixels[AWS_POINT][0] > 240:
+        keyboard.press("q")
+
+
 def change_throttle(percent):
     if percent > 0:
         keyboard.press("w")
@@ -87,9 +107,20 @@ if __name__ == "__main__":
     current_target_speed = 0
     sleep(2)
     while True:
-        new_target_speed = min(get_speed_limit(), get_signal_limit())
-        print(f"new target speed is {new_target_speed}")
+        got_speed_limit = get_speed_limit()
+        got_signal_limit = get_signal_limit()
+        if got_speed_limit is not None:
+            new_target_speed = min(got_speed_limit, got_signal_limit)
+        else:
+            new_target_speed = got_signal_limit
+        logging.debug(f"Target speed {new_target_speed}")
         if new_target_speed != current_target_speed:
-            change_throttle(new_target_speed - current_target_speed)
+            if new_target_speed > 0:
+                throttle_change_amount = new_target_speed - current_target_speed
+            elif new_target_speed == 0:
+                throttle_change_amount = new_target_speed - current_target_speed - 5
+            logging.info(f"Changing speed to {new_target_speed}")
+            change_throttle(throttle_change_amount)
             current_target_speed = new_target_speed
+        handle_aws()
         sleep(2)
