@@ -1,7 +1,7 @@
 # SCR Autonomous Driver
 
-## Update: this is a stupid idea and isn't worth the effort. I have better stuff to do with my time.
+## Update: I gave up on this
 
-A Python script that automatically drives SCR trains by analysing text on the screen
+A Python script that automatically drives trains in [Stepford County Railway](https://www.roblox.com/games/696347899/Stepford-County-Railway) by reading text and colors on the screen
 
-This software is still being developed and many features are not implemented yet.
+This software is completely incomplete
