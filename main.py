@@ -3,9 +3,10 @@ from os import system
 from threading import Event
 from time import sleep
 
-import pytesseract
+from Levenshtein import distance as lev_distance
 from PIL import ImageGrab
 from pynput.keyboard import Controller
+from pytesseract import image_to_string
 
 window = (0, 100, 1920, 1180)
 speed_limit_bbox = (window[0] + 865, window[1] + 940, window[0] + 925, window[1] + 980)
@@ -13,8 +14,14 @@ signal_bbox = (window[0] + 1685, window[1] + 893, window[0] + 1686, window[1] + 
 signal_points = ((0, 0), (0, 49), (0, 98), (0, 146))
 aws_bbox = (window[0] + 1430, window[1] + 960, window[0] + 1431, window[1] + 961)
 distance_bbox = (window[0] + 350, window[1] + 1023, window[0] + 426, window[1] + 1068)
+station_name_bbox = (
+    window[0] + 186,
+    window[1] + 918,
+    window[0] + 777,
+    window[1] + 1008,
+)
 top_speed = 100
-throttle_change_speed = 0.0337
+throttle_change_speed = 0.0334
 
 keyboard = Controller()
 
@@ -26,9 +33,7 @@ def get_speed_limit() -> int:
     pic = ImageGrab.grab(bbox=speed_limit_bbox)
     pic = pic.resize((90, 60))
     pic.save("speed_limit.tif")
-    speed_limit = pytesseract.image_to_string(
-        "speed_limit.tif", config="--psm 7 digits get.images"
-    )
+    speed_limit = image_to_string("speed_limit.tif", config="--psm 7 digits get.images")
     speed_limit = speed_limit.strip()
     try:
         speed_limit = int(speed_limit)
@@ -77,9 +82,7 @@ def get_signal_limit() -> int:
 def get_station_distance() -> float:
     pic = ImageGrab.grab(bbox=distance_bbox)
     pic.save("distance.tif")
-    distance = pytesseract.image_to_string(
-        "distance.tif", config="--psm 7 digits get.images"
-    )
+    distance = image_to_string("distance.tif", config="--psm 7 digits get.images")
     distance = distance.strip()
     try:
         distance = float(distance)
@@ -92,12 +95,13 @@ def get_station_distance() -> float:
 def handle_aws() -> None:
     pic = ImageGrab.grab(bbox=aws_bbox)
     pixels = pic.load()
-    if pixels[0, 0][0] > 200:
+    if pixels[0, 0][0] > 180:
         keyboard.press("q")
+        keyboard.release("q")
         logging.debug("AWS")
 
 
-def change_throttle(start, end):
+def change_throttle(start, end) -> None:
     if end == 0 or end == top_speed:
         buffer = 0.1
     else:
@@ -112,6 +116,12 @@ def change_throttle(start, end):
         keyboard.release("s")
 
 
+def get_station_name() -> str:
+    pic = ImageGrab.grab(bbox=station_name_bbox)
+    pic.save("station.tif")
+    return image_to_string("station.tif").strip()
+
+
 class Station:
     def __init__(self, name, time1, time2, time3):
         self.name = name
@@ -124,33 +134,46 @@ nb_stations = [
     Station("Stepford East", 0, 0, 0),
     Station("Stepford High Street", 0, 0, 0),
     Station("Whitefield Lido", 0, 0, 0),
-    Station("Stepford United Football Club", 0, 0, 0),
+    Station("Stepford United Football", 0, 0, 0),
 ]
 sb_stations = [
-    Station("Stepford United Football Club", 0, 0, 0),
+    Station("Stepford United Football", 1, 1, 1),
     Station("Whitefield Lido", 0, 0, 0),
     Station("Stepford High Street", 0, 0, 0),
     Station("Stepford East", 0, 0, 0),
     Station("Stepford Central", 0, 0, 0),
 ]
-station_names = [station.name for station in stations]
+nb_station_names = [station.name for station in nb_stations]
+sb_station_names = [station.name for station in sb_stations]
 
 
-def station_stop(current_target_speed):
-    # Get station name
-    station_name = "Whitefield Lido"  # TODO: Use Tesseract to obtain this
-    station = stations[station_names.index(station_name)]
+def station_stop(current_target_speed) -> None:
+    station_name = get_station_name()
+    print(station_name)
+    closest_lev = lev_distance(station_name, sb_station_names[0])
+    closest_name = sb_station_names[0]
+    for this in sb_station_names:
+        lev = lev_distance(station_name, this)
+        print(lev)
+        if lev < closest_lev:
+            closest_lev = lev
+            closest_name = this
+    print(closest_name)
+
+    station = sb_stations[sb_station_names.index(closest_name)]
     reached = False
     while not reached:
         distance = get_station_distance()
         if distance == 0.0:
             reached = True
-    sleep(station.time1)
-    change_throttle(current_target_speed, 20)
-    sleep(station.time2)
-    change_throttle(20, 5)
-    sleep(station.time3)
-    change_throttle(5, 0)
+    # sleep(station.time1)
+    # change_throttle(current_target_speed, 20)
+    # sleep(station.time2)
+    # change_throttle(20, 5)
+    # sleep(station.time3)
+    # change_throttle(5, 0)
+    input("tell me when it's time to keep driving")
+    sleep(1)
 
 
 if __name__ == "__main__":
@@ -161,15 +184,15 @@ if __name__ == "__main__":
         speed_limit = get_speed_limit()
         signal_limit = get_signal_limit()
         station_distance = get_station_distance()
-        if station_distance < 0.14:
-            station_limit = 45
         if station_distance < 0.03:
-            station_stop()
+            station_stop(current_target_speed)
             # This function skips the speed limit and signal,
             # and makes the train stop at the station correctly.
             # The main loop continues once the stop is complete.
             current_target_speed = 0
             continue
+        elif station_distance < 0.14:
+            station_limit = 45
         else:
             station_limit = top_speed
 
