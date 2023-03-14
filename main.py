@@ -32,9 +32,10 @@ def get_speed_limit() -> int:
     speed_limit = speed_limit.strip()
     try:
         speed_limit = int(speed_limit)
+        return speed_limit
     except ValueError:
         logging.debug(f"Tesseract error: {speed_limit}")
-    return speed_limit
+        return top_speed
 
 
 def get_signal_limit() -> int:
@@ -68,7 +69,7 @@ def get_signal_limit() -> int:
     elif "r" in aspect_colours:
         signal_limit = 0
     else:
-        signal_limit = 100
+        signal_limit = top_speed
 
     return signal_limit
 
@@ -97,41 +98,40 @@ def handle_aws() -> None:
 
 
 def change_throttle(start, end):
-    if end == 0 or end == 100:
+    if end == 0 or end == top_speed:
         buffer = 0.1
     else:
         buffer = 0
     if end > start:
         keyboard.press("w")
-        Event().wait(throttle_change_speed * (end - start) + buffer)
+        Event().wait(100 / top_speed * throttle_change_speed * (end - start) + buffer)
         keyboard.release("w")
     elif end < start:
         keyboard.press("s")
-        Event().wait(throttle_change_speed * (start - end) + buffer)
+        Event().wait(100 / top_speed * throttle_change_speed * (start - end) + buffer)
         keyboard.release("s")
 
 
 class Station:
-    def __init__(self, name, entry_speed, time1, time2, time3):
+    def __init__(self, name, time1, time2, time3):
         self.name = name
-        self.entry_speed = entry_speed
         self.time1 = time1  # entry speed to 20
         self.time2 = time2  # 20 to 5
         self.time3 = time3  # 5 to 0
 
 
 nb_stations = [
-    Station("Stepford East", 45, 0, 0, 0),
-    Station("Stepford High Street", 45, 0, 0, 0),
-    Station("Whitefield Lido", 45, 0, 0, 0),
-    Station("Stepford United Football Club", 45, 0, 0, 0),
+    Station("Stepford East", 0, 0, 0),
+    Station("Stepford High Street", 0, 0, 0),
+    Station("Whitefield Lido", 0, 0, 0),
+    Station("Stepford United Football Club", 0, 0, 0),
 ]
 sb_stations = [
-    Station("Stepford United Football Club", 45, 0, 0, 0),
-    Station("Whitefield Lido", 45, 0, 0, 0),
-    Station("Stepford High Street", 45, 0, 0, 0),
-    Station("Stepford East", 45, 0, 0, 0),
-    Station("Stepford Central", 45, 0, 0, 0),
+    Station("Stepford United Football Club", 0, 0, 0),
+    Station("Whitefield Lido", 0, 0, 0),
+    Station("Stepford High Street", 0, 0, 0),
+    Station("Stepford East", 0, 0, 0),
+    Station("Stepford Central", 0, 0, 0),
 ]
 station_names = [station.name for station in stations]
 
@@ -168,14 +168,12 @@ if __name__ == "__main__":
             # This function skips the speed limit and signal,
             # and makes the train stop at the station correctly.
             # The main loop continues once the stop is complete.
+            current_target_speed = 0
             continue
         else:
             station_limit = top_speed
 
-        if isinstance(speed_limit, int):
-            new_target_speed = min(speed_limit, signal_limit, station_limit)
-        else:
-            new_target_speed = signal_limit
+        new_target_speed = min(speed_limit, signal_limit, station_limit)
 
         # Change the throttle
         if new_target_speed != current_target_speed:
