@@ -1,11 +1,12 @@
 import logging
 from os import system
 from threading import Event
-from time import sleep
+from time import sleep, time
 
 from Levenshtein import distance as lev_distance
 from PIL import ImageGrab
 from pynput.keyboard import Controller
+from pynput.mouse import Button, Listener
 from pytesseract import image_to_string
 
 window = (0, 100, 1920, 1180)
@@ -23,9 +24,35 @@ station_name_bbox = (
 top_speed = 100
 throttle_change_speed = 0.0334
 
-keyboard = Controller()
 
+class Station:
+    def __init__(self, name, brake, time1, time2, time3):
+        self.name = name
+        self.brake = brake
+        self.time1 = time1  # entry speed to 20
+        self.time2 = time2  # 20 to 5
+        self.time3 = time3  # 5 to 0
+
+
+nb_stations = [
+    Station("Stepford East", 0.17, 6.654160023, 3.992200136, 3.088099957),
+    Station("Stepford High Street", 0.1, 4.555209875, 4.76011014, 3.024209976),
+    Station("Whitefield Lido", 0.1, 2.4088099, 5.13623023, 2.759949923),
+    Station("Stepford United Football", 0.1, 4.232980013, 1.559949875, 0.6961500645),
+]
+sb_stations = [
+    Station("Stepford United Football", 0.1, 3.181479931, 4.375799894, 3.936160088),
+    Station("Whitefield Lido", 0.12, 3.149699926, 2.848060131, 7.200239897),
+    Station("Stepford High Street", 0.1, 4.90790987, 3.744009972, 6.296169996),
+    Station("Stepford East", 0.1, 6.793120146, 4.768109798, 3.752220154),
+    Station("Stepford Central", 0.1, 8.626450062, 3.343790054, 3.65602994),
+]
+nb_station_names = [station.name for station in nb_stations]
+sb_station_names = [station.name for station in sb_stations]
+
+keyboard = Controller()
 logging.getLogger("PIL.TiffImagePlugin").setLevel(logging.INFO)
+# logging.basicConfig(filename="scr.log", encoding="utf-8", level="INFO")
 logging.basicConfig(level="DEBUG")
 
 
@@ -122,76 +149,98 @@ def get_station_name() -> str:
     return image_to_string("station.tif").strip()
 
 
-class Station:
-    def __init__(self, name, time1, time2, time3):
-        self.name = name
-        self.time1 = time1  # entry speed to 20
-        self.time2 = time2  # 20 to 5
-        self.time3 = time3  # 5 to 0
+def on_click_1(x, y, button, pressed):
+    if pressed and button == Button.left:
+        logging.info(time())
+        change_throttle(current_target_speed, 20)
+        return False
 
 
-nb_stations = [
-    Station("Stepford East", 0, 0, 0),
-    Station("Stepford High Street", 0, 0, 0),
-    Station("Whitefield Lido", 0, 0, 0),
-    Station("Stepford United Football", 0, 0, 0),
-]
-sb_stations = [
-    Station("Stepford United Football", 1, 1, 1),
-    Station("Whitefield Lido", 0, 0, 0),
-    Station("Stepford High Street", 0, 0, 0),
-    Station("Stepford East", 0, 0, 0),
-    Station("Stepford Central", 0, 0, 0),
-]
-nb_station_names = [station.name for station in nb_stations]
-sb_station_names = [station.name for station in sb_stations]
+def on_click_2(x, y, button, pressed):
+    if pressed and button == Button.left:
+        logging.info(time())
+        change_throttle(20, 5)
+        return False
 
 
-def station_stop(current_target_speed) -> None:
-    station_name = get_station_name()
-    print(station_name)
-    closest_lev = lev_distance(station_name, sb_station_names[0])
-    closest_name = sb_station_names[0]
-    for this in sb_station_names:
-        lev = lev_distance(station_name, this)
-        print(lev)
-        if lev < closest_lev:
-            closest_lev = lev
-            closest_name = this
-    print(closest_name)
+def on_click_3(x, y, button, pressed):
+    if pressed and button == Button.left:
+        logging.info(time())
+        change_throttle(5, 0)
+        return False
 
-    station = sb_stations[sb_station_names.index(closest_name)]
+
+def station_stop(station: Station) -> None:
+    logging.debug(station.name)
     reached = False
     while not reached:
         distance = get_station_distance()
         if distance == 0.0:
             reached = True
-    # sleep(station.time1)
-    # change_throttle(current_target_speed, 20)
-    # sleep(station.time2)
-    # change_throttle(20, 5)
-    # sleep(station.time3)
-    # change_throttle(5, 0)
-    input("tell me when it's time to keep driving")
-    sleep(1)
+
+    logging.info(time())
+
+    # with Listener(on_click=on_click_1) as listener:
+        # listener.join()
+    # with Listener(on_click=on_click_2) as listener:
+        # listener.join()
+    # with Listener(on_click=on_click_3) as listener:
+        # listener.join()
+    sleep(station.time1)
+    change_throttle(current_target_speed, 20)
+    sleep(station.time2)
+    change_throttle(20, 5)
+    sleep(station.time3)
+    change_throttle(5, 0)
+    keyboard.press("t")
+    keyboard.release("t")
+    done = False
+    while not done:
+        distance = get_station_distance()
+        if distance != 0.0:
+            done = True
 
 
 if __name__ == "__main__":
     current_target_speed = 0
     sleep(2)
+    direction = "sb"
+    station = sb_stations[0]
     while True:
         # Read values from screen
         speed_limit = get_speed_limit()
         signal_limit = get_signal_limit()
         station_distance = get_station_distance()
         if station_distance < 0.03:
-            station_stop(current_target_speed)
             # This function skips the speed limit and signal,
             # and makes the train stop at the station correctly.
             # The main loop continues once the stop is complete.
+            station_stop(station)
+
+            # Get the next station
+            station_name = get_station_name()
+            closest_lev = lev_distance(station_name, sb_station_names[0])
+            closest_name = sb_station_names[0]
+            for this in sb_station_names:
+                lev = lev_distance(station_name, this)
+                if lev < closest_lev:
+                    closest_lev = lev
+                    closest_name = this
+            logging.debug(f"Next station: {closest_name}")
+            if direction == "sb":
+                station = sb_stations[sb_station_names.index(closest_name)]
+            else:
+                station = nb_stations[nb_station_names.index(closest_name)]
+
+            if direction == "nb" and station.name == "Stepford United Football":
+                terminus = True
+            elif station.name == "Stepford Central":
+                terminus = True
+
             current_target_speed = 0
             continue
-        elif station_distance < 0.14:
+
+        elif station_distance < station.brake:
             station_limit = 45
         else:
             station_limit = top_speed
@@ -200,11 +249,11 @@ if __name__ == "__main__":
 
         # Change the throttle
         if new_target_speed != current_target_speed:
-            logging.info(f"Changing speed to {new_target_speed}")
+            logging.debug(f"Changing speed to {new_target_speed}")
             change_throttle(current_target_speed, new_target_speed)
             current_target_speed = new_target_speed
 
-        handle_aws()
+        # handle_aws()
 
         system("clear")
         logging.debug(f"Speed limit: {speed_limit}")
@@ -212,5 +261,3 @@ if __name__ == "__main__":
         logging.debug(f"Distance to station: {station_distance}")
         logging.debug(f"Station limit: {station_limit}")
         logging.debug(f"Target speed: {new_target_speed}")
-
-        # sleep(0.5)
