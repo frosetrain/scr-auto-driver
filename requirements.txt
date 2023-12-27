@@ -1,5 +1,4 @@
-pillow==9.4.0
+pillow==10.1.0
 pynput==1.7.6
 pytesseract==0.3.10
-neovim==0.3.1
-levenshtein==0.20.9
+levenshtein==0.23.0
