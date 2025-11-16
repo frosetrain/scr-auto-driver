@@ -1,0 +1,12 @@
+[project]
+name = "scr-auto-driver"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "levenshtein==0.23.0",
+    "pillow==10.1.0",
+    "pynput==1.7.6",
+    "pytesseract==0.3.10",
+]
